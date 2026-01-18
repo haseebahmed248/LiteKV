@@ -1,0 +1,17 @@
+Binaries
+
+*.exe
+
+IDE
+
+.idea/
+.vscode/
+*.swp
+
+OS
+
+.DS_Store
+
+Go
+
+go.sum
