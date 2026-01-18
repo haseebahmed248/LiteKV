@@ -17,30 +17,35 @@ Redis-compatible in-memory database built from scratch in Go — no external dat
 
 ## Architecture
 
+```
 Client (redis-cli)
-    |
-    v (RESP protocol)
+      |
+      v (RESP protocol)
 +-------------+
 |   LiteKV    |
 +-------------+
-    |
+      |
 +-----+-----+
 |  Store    | <-- In-memory data
 +-----------+
+```
 
 ## Run
 
 ```bash
 go run cmd/litekv/main.go
+```
 
-Connect
+## Connect
 
+```bash
 redis-cli -p 6379
 > SET foo bar
 OK
 > GET foo
 "bar"
+```
 
-Author
+## Author
 
-Haseeb Ahmed - https://github.com/haseebahmed248
+Haseeb Ahmed - [GitHub](https://github.com/haseebahmed248)
