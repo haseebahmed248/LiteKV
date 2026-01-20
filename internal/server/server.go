@@ -21,11 +21,10 @@ func handleConnection(conn net.Conn) {
 		if err != nil || response == "" {
 			log.Print(err)
 			log.Print(response)
-			conn.Write([]byte(protocol.SerializeError("-1")))
-			continue
+			// conn.Write([]byte(protocol.SerializeError("-1")))
+			// continue
 		}
-		data := protocol.SerializeSimpleString(response)
-		conn.Write([]byte(data))
+		conn.Write([]byte(response))
 	}
 
 }

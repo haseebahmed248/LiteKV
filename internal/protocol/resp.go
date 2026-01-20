@@ -10,6 +10,9 @@ import (
 func Parse(reader *bufio.Reader) ([]string, error) {
 	result := make([]string, 0)
 	prefix, _, _ := reader.ReadLine()
+	if len(prefix) == 0 {
+		return nil, errors.New("empty input")
+	}
 	totalElements, err := strconv.Atoi(string(prefix[1:]))
 	if err != nil {
 		log.Print(err)
@@ -39,10 +42,18 @@ func SerializeSimpleString(s string) string {
 
 }
 
-func SerializeBulkString(s string) {
+func SerializeBulkString(s string) string {
+	return "$" + strconv.Itoa(len(s)) + "\r\n" + s + "\r\n"
+}
 
+func SerializeInteger(n int) string {
+	return ":" + strconv.Itoa(n) + "\r\n"
 }
 
 func SerializeError(msg string) string {
-	return "-" + msg + "\r\n"
+	return "-ERR " + msg + "\r\n"
+}
+
+func SerializeNull() string {
+	return "$-1\r\n"
 }
