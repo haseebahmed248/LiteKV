@@ -2,25 +2,32 @@ package server
 
 import (
 	"bufio"
+	"litekv/internal/commands"
 	"litekv/internal/protocol"
 	"log"
 	"net"
 )
 
 func handleConnection(conn net.Conn) {
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
 	for {
-		reader := bufio.NewReader(conn)
 		args, err := protocol.Parse(reader)
 		if err != nil {
 			log.Print(err)
 			return
 		}
-		defer conn.Close()
-		if args[0] == "PING" {
-			response := protocol.SerializeSimpleString("PONG")
-			conn.Write([]byte(response))
+		response, err := commands.Route(args)
+		if err != nil || response == "" {
+			log.Print(err)
+			log.Print(response)
+			conn.Write([]byte(protocol.SerializeError("-1")))
+			continue
 		}
+		data := protocol.SerializeSimpleString(response)
+		conn.Write([]byte(data))
 	}
+
 }
 
 func StartServer() {

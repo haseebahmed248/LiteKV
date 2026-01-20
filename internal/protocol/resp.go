@@ -19,7 +19,6 @@ func Parse(reader *bufio.Reader) ([]string, error) {
 		data, _, err := reader.ReadLine()
 		if prefix[0] == '*' && data[0] == '$' {
 			if data == nil {
-				log.Print(result)
 				return nil, errors.New("nil data")
 			}
 			if err != nil {
@@ -44,6 +43,6 @@ func SerializeBulkString(s string) {
 
 }
 
-func SerializeError(msg string) {
-
+func SerializeError(msg string) string {
+	return "-" + msg + "\r\n"
 }
