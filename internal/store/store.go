@@ -8,6 +8,7 @@ import (
 
 var redis_data = make(map[string]string)
 var expiry = make(map[string]time.Time)
+var list_data = make(map[string][]string)
 var mu sync.RWMutex
 
 func Exists(key string) bool {
@@ -105,4 +106,76 @@ func CleanUp() {
 		}
 		mu.Unlock()
 	}
+}
+
+// LIST Fucntions
+
+func LPush(key string, value string) int {
+	data := list_data[key]
+	data = append([]string{value}, data...)
+	list_data[key] = data
+	return len(data)
+}
+
+func RPush(key string, value string) int {
+	data := list_data[key]
+	data = append(data, value)
+	list_data[key] = data
+	return len(data)
+}
+
+func LPop(key string) (string, bool) {
+	if len(list_data) <= 0 {
+		return "", false
+	}
+	if data, ok := list_data[key]; ok {
+		response := data[0]
+		log.Print("Deleting from right: ", response)
+		list_data[key] = data[1:]
+		return response, true
+	}
+
+	return "", false
+}
+
+func RPop(key string) (string, bool) {
+	if len(list_data) <= 0 {
+		return "", false
+	}
+	if data, ok := list_data[key]; ok {
+		response := data[len(data)-1]
+		log.Print("Deleting from right: ", response)
+		list_data[key] = data[:len(data)-1]
+		return response, true
+	}
+
+	return "", false
+}
+
+func LRange(key string, start int, stop int) ([]string, bool) {
+	if start < 0 || stop > len(list_data) {
+		return nil, false
+	}
+	if start == 0 && stop == -1 {
+		return list_data[key], true
+	}
+	response := make(map[string][]string)
+	i := 0
+	if _, ok := list_data[key]; !ok {
+		return nil, false
+	}
+	for _, value := range list_data[key] {
+		if i >= start && i <= stop {
+			response[key] = append(response[key], value)
+		}
+		i++
+	}
+	return response[key], true
+}
+
+func LLen(key string) int {
+	if data, ok := list_data[key]; ok {
+		return len(data)
+	}
+	return -1
 }

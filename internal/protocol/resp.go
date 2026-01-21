@@ -46,6 +46,15 @@ func SerializeBulkString(s string) string {
 	return "$" + strconv.Itoa(len(s)) + "\r\n" + s + "\r\n"
 }
 
+func SerializeArray(items []string) string {
+	totalLen := len(items)
+	response := "*" + strconv.Itoa(totalLen) + "\r\n"
+	for i := 0; i < totalLen; i++ {
+		response += "$" + strconv.Itoa(len(items[i])) + "\r\n" + items[i] + "\r\n"
+	}
+	return response
+}
+
 func SerializeInteger(n int) string {
 	return ":" + strconv.Itoa(n) + "\r\n"
 }

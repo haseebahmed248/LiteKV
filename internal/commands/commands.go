@@ -88,6 +88,54 @@ func Route(parsed []string) (string, error) {
 			return protocol.SerializeInteger(1), nil
 		}
 		return protocol.SerializeInteger(0), errors.New("Key doesn't exists")
+	} else if string(parsed[0]) == "LPUSH" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'LPUSH' command"), errors.New("Wrong number of arguments for LPUSH command")
+		}
+		response := store.LPush(parsed[1], parsed[2])
+		return protocol.SerializeInteger(response), nil
+
+	} else if string(parsed[0]) == "RPUSH" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'RPUSH' command"), errors.New("Wrong number of arguments for RPUSH command")
+		}
+		response := store.RPush(parsed[1], parsed[2])
+		return protocol.SerializeInteger(response), nil
+	} else if string(parsed[0]) == "LPOP" {
+		if len(parsed) < 1 {
+			return protocol.SerializeError("Wrong number of arguments for 'LPOP' command"), errors.New("Wrong number of arguments for LPOP command")
+		}
+		response, ok := store.LPop(parsed[1])
+		if ok {
+			return protocol.SerializeBulkString(response), nil
+		}
+		return protocol.SerializeNull(), errors.New("Error LPOP data")
+	} else if string(parsed[0]) == "RPOP" {
+		if len(parsed) < 1 {
+			return protocol.SerializeError("Wrong number of arguments for 'LPOP' command"), errors.New("Wrong number of arguments for LPOP command")
+		}
+		response, ok := store.RPop(parsed[1])
+		if ok {
+			return protocol.SerializeBulkString(response), nil
+		}
+		return protocol.SerializeNull(), errors.New("Error LPOP data")
+	} else if string(parsed[0]) == "LRANGE" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'LRANGE' command"), errors.New("Wrong number of arguments for LRANGE command")
+		}
+		start, _ := strconv.Atoi(parsed[2])
+		end, _ := strconv.Atoi(parsed[3])
+		response, ok := store.LRange(parsed[1], start, end)
+		if ok {
+			return protocol.SerializeArray(response), nil
+		}
+		return protocol.SerializeNull(), nil
+	} else if string(parsed[0]) == "LLEN" {
+		if len(parsed) < 1 {
+			return protocol.SerializeError("Wrong number of arguments for 'LLEN' command"), errors.New("Wrong number of arguments for 'LLEN' command")
+		}
+		response := store.LLen(parsed[1])
+		return protocol.SerializeInteger(response), nil
 	} else {
 		return protocol.SerializeError("Invalid operation"), errors.New("invalid Operation")
 	}
