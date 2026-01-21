@@ -111,6 +111,8 @@ func CleanUp() {
 // LIST Fucntions
 
 func LPush(key string, value string) int {
+	mu.Lock()
+	defer mu.Unlock()
 	data := list_data[key]
 	data = append([]string{value}, data...)
 	list_data[key] = data
@@ -118,6 +120,8 @@ func LPush(key string, value string) int {
 }
 
 func RPush(key string, value string) int {
+	mu.Lock()
+	defer mu.Unlock()
 	data := list_data[key]
 	data = append(data, value)
 	list_data[key] = data
@@ -125,6 +129,8 @@ func RPush(key string, value string) int {
 }
 
 func LPop(key string) (string, bool) {
+	mu.Lock()
+	defer mu.Unlock()
 	if len(list_data) <= 0 {
 		return "", false
 	}
@@ -139,6 +145,8 @@ func LPop(key string) (string, bool) {
 }
 
 func RPop(key string) (string, bool) {
+	mu.Lock()
+	defer mu.Unlock()
 	if len(list_data) <= 0 {
 		return "", false
 	}
@@ -153,6 +161,8 @@ func RPop(key string) (string, bool) {
 }
 
 func LRange(key string, start int, stop int) ([]string, bool) {
+	mu.Lock()
+	defer mu.Unlock()
 	if start < 0 || stop > len(list_data) {
 		return nil, false
 	}
@@ -174,6 +184,8 @@ func LRange(key string, start int, stop int) ([]string, bool) {
 }
 
 func LLen(key string) int {
+	mu.RLock()
+	defer mu.RUnlock()
 	if data, ok := list_data[key]; ok {
 		return len(data)
 	}
