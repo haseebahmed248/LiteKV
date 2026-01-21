@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"litekv/internal/commands"
 	"litekv/internal/protocol"
+	"litekv/internal/store"
 	"log"
 	"net"
 )
@@ -13,6 +14,7 @@ func handleConnection(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	for {
 		args, err := protocol.Parse(reader)
+
 		if err != nil {
 			log.Print(err)
 			return
@@ -36,6 +38,7 @@ func StartServer() {
 		return
 	}
 	log.Print("Listening to port 6379")
+	go store.CleanUp()
 	for {
 		conn, err := connection.Accept()
 		if err != nil {
