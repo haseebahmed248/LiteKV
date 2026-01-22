@@ -136,6 +136,42 @@ func Route(parsed []string) (string, error) {
 		}
 		response := store.LLen(parsed[1])
 		return protocol.SerializeInteger(response), nil
+	} else if string(parsed[0]) == "HSET" {
+		if len(parsed) < 4 {
+			return protocol.SerializeError("Wrong number of arguments for 'HSET' command"), errors.New("Wrong number of arguments for 'HSET' command")
+		}
+		return protocol.SerializeInteger(store.HSet(parsed[1], parsed[2], parsed[3])), nil
+
+	} else if string(parsed[0]) == "HGET" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'HGET' command"), errors.New("Wrong number of arguments for 'HGET' command")
+		}
+		if response, ok := store.HGet(parsed[1], parsed[2]); ok {
+			return protocol.SerializeSimpleString(response), nil
+		}
+		return protocol.SerializeNull(), errors.New("No data found")
+	} else if string(parsed[0]) == "HLEN" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'HLEN' command"), errors.New("Wrong number of arguments for 'HLEN' command")
+		}
+		return protocol.SerializeInteger(store.HLen(parsed[1])), nil
+	} else if string(parsed[0]) == "HGETALL" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'HGETALL' command"), errors.New("Wrong number of arguments for 'HGETALL' command")
+		}
+		response := store.HGetAll(parsed[1])
+		return protocol.SerializeArray(response), nil
+	} else if string(parsed[0]) == "HDEL" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'HDEL' command"), errors.New("Wrong number of arguments for 'HDEL' command")
+		}
+		return protocol.SerializeInteger(store.HDel(parsed[1], parsed[2])), nil
+	} else if string(parsed[0]) == "HKEYS" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'HDEL' command"), errors.New("Wrong number of arguments for 'HDEL' command")
+		}
+		response := store.HKeys(parsed[1])
+		return protocol.SerializeArray(response), nil
 	} else {
 		return protocol.SerializeError("Invalid operation"), errors.New("invalid Operation")
 	}

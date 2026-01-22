@@ -9,6 +9,10 @@ import (
 var redis_data = make(map[string]string)
 var expiry = make(map[string]time.Time)
 var list_data = make(map[string][]string)
+
+type inner_hash_data map[string]string
+
+var hash_data = make(map[string]inner_hash_data)
 var mu sync.RWMutex
 
 func Exists(key string) bool {
@@ -190,4 +194,88 @@ func LLen(key string) int {
 		return len(data)
 	}
 	return -1
+}
+
+// Hash Functions
+func HSet(key string, field string, value string) int {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// ensure inner map exists
+	if _, ok := hash_data[key]; !ok {
+		hash_data[key] = make(inner_hash_data)
+	}
+
+	if _, existed := hash_data[key][field]; existed {
+		hash_data[key][field] = value
+		return 0
+	}
+	hash_data[key][field] = value
+	return 1
+}
+
+func HGet(key string, field string) (string, bool) {
+	mu.RLock()
+	defer mu.RUnlock()
+	if m, ok := hash_data[key]; ok {
+		if response, ok2 := m[field]; ok2 {
+			return response, true
+		}
+	}
+	return "", false
+}
+
+func HDel(key string, field string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	if m, ok := hash_data[key]; ok {
+		if _, ok2 := m[field]; ok2 {
+			delete(m, field)
+			return 1
+		}
+	}
+	return 0
+}
+
+func HGetAll(key string) []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	response := make([]string, 0)
+	if m, ok := hash_data[key]; ok {
+		for k, v := range m {
+			response = append(response, k)
+			response = append(response, v)
+		}
+	}
+	return response
+}
+
+func HKeys(key string) []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	response := make([]string, 0)
+	if m, ok := hash_data[key]; ok {
+		for field := range m {
+			response = append(response, field)
+		}
+	}
+	return response
+}
+
+func HLen(key string) int {
+	mu.RLock()
+	defer mu.RUnlock()
+	length := 0
+	m, ok := hash_data[key]
+	if !ok {
+		return length
+	}
+	for k, v := range m {
+		if k == "" || v == "" {
+			length++
+		} else {
+			length += 2
+		}
+	}
+	return length
 }
