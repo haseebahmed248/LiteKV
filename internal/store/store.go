@@ -1,7 +1,6 @@
 package store
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -11,8 +10,10 @@ var expiry = make(map[string]time.Time)
 var list_data = make(map[string][]string)
 
 type inner_hash_data map[string]string
+type inner_set_data map[string]bool
 
 var hash_data = make(map[string]inner_hash_data)
+var set_data = make(map[string]inner_set_data)
 var mu sync.RWMutex
 
 func Exists(key string) bool {
@@ -87,7 +88,6 @@ func Set(key string, value string) bool {
 	mu.Lock()
 	defer mu.Unlock()
 	if redis_data == nil {
-		log.Print("DB is null")
 		return false
 	}
 
@@ -140,7 +140,6 @@ func LPop(key string) (string, bool) {
 	}
 	if data, ok := list_data[key]; ok {
 		response := data[0]
-		log.Print("Deleting from right: ", response)
 		list_data[key] = data[1:]
 		return response, true
 	}
@@ -156,7 +155,6 @@ func RPop(key string) (string, bool) {
 	}
 	if data, ok := list_data[key]; ok {
 		response := data[len(data)-1]
-		log.Print("Deleting from right: ", response)
 		list_data[key] = data[:len(data)-1]
 		return response, true
 	}
@@ -167,10 +165,10 @@ func RPop(key string) (string, bool) {
 func LRange(key string, start int, stop int) ([]string, bool) {
 	mu.Lock()
 	defer mu.Unlock()
-	if start < 0 || stop > len(list_data) {
+	if start < 0 || stop > len(list_data[key]) {
 		return nil, false
 	}
-	if start == 0 && stop == -1 {
+	if start == 0 && stop <= -1 {
 		return list_data[key], true
 	}
 	response := make(map[string][]string)
@@ -193,7 +191,7 @@ func LLen(key string) int {
 	if data, ok := list_data[key]; ok {
 		return len(data)
 	}
-	return -1
+	return 0
 }
 
 // Hash Functions
@@ -265,17 +263,74 @@ func HKeys(key string) []string {
 func HLen(key string) int {
 	mu.RLock()
 	defer mu.RUnlock()
-	length := 0
-	m, ok := hash_data[key]
+	_, ok := hash_data[key]
 	if !ok {
-		return length
+		return 0
 	}
-	for k, v := range m {
-		if k == "" || v == "" {
-			length++
-		} else {
-			length += 2
+	return len(hash_data[key])
+}
+
+// SETS (unordered) Functions
+
+func SAdd(key string, value string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	// ensure inner map exists
+	if _, ok := set_data[key]; !ok {
+		set_data[key] = make(inner_set_data)
+	}
+	if _, ok := set_data[key]; ok {
+		if _, ok := set_data[key][value]; ok {
+			set_data[key][value] = true
+			return 0
+		}
+		set_data[key][value] = true
+		return 1
+	}
+	set_data[key][value] = true
+	return 1
+}
+
+func SRem(key string, value string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := set_data[key][value]; ok {
+		delete(set_data[key], value)
+		return 1
+	}
+	return 0
+}
+
+func SMembers(key string) []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	response := make([]string, 0)
+	for value, ok := range set_data[key] {
+		if ok {
+			response = append(response, value)
 		}
 	}
-	return length
+	return response
+}
+
+func SIsMember(key string, member string) int {
+	mu.RLock()
+	defer mu.RUnlock()
+	if _, ok := set_data[key][member]; ok {
+		return 1
+	}
+	return 0
+}
+
+func SCard(key string) int {
+	mu.RLock()
+	defer mu.RUnlock()
+	response := 0
+
+	for _, ok := range set_data[key] {
+		if ok {
+			response++
+		}
+	}
+	return response
 }

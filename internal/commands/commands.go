@@ -172,6 +172,32 @@ func Route(parsed []string) (string, error) {
 		}
 		response := store.HKeys(parsed[1])
 		return protocol.SerializeArray(response), nil
+	} else if string(parsed[0]) == "SADD" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'SADD' command"), errors.New("Wrong number of arguments for 'SADD' command")
+		}
+		return protocol.SerializeInteger(store.SAdd(parsed[1], parsed[2])), nil
+
+	} else if string(parsed[0]) == "SREM" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'SREM' command"), errors.New("Wrong number of arguments for 'SREM' command")
+		}
+		return protocol.SerializeInteger(store.SRem(parsed[1], parsed[2])), nil
+	} else if string(parsed[0]) == "SISMEMBER" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'SISMEMBER' command"), errors.New("Wrong number of arguments for 'SISMEMBER' command")
+		}
+		return protocol.SerializeInteger(store.SIsMember(parsed[1], parsed[2])), nil
+	} else if string(parsed[0]) == "SCARD" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'SCARD' command"), errors.New("Wrong number of arguments for 'SCARD' command")
+		}
+		return protocol.SerializeInteger(store.SCard(parsed[1])), nil
+	} else if string(parsed[0]) == "SMEMBERS" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'SMEMBERS' command"), errors.New("Wrong number of arguments for 'SMEMBERS' command")
+		}
+		return protocol.SerializeArray(store.SMembers(parsed[1])), nil
 	} else {
 		return protocol.SerializeError("Invalid operation"), errors.New("invalid Operation")
 	}
