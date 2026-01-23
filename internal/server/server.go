@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"litekv/internal/commands"
+	"litekv/internal/persistence"
 	"litekv/internal/protocol"
 	"litekv/internal/store"
 	"log"
@@ -39,6 +40,7 @@ func StartServer() {
 	}
 	log.Print("Listening to port 6379")
 	go store.CleanUp()
+	persistence.Load()
 	for {
 		conn, err := connection.Accept()
 		if err != nil {

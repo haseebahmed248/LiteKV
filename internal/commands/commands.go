@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"litekv/internal/persistence"
 	"litekv/internal/protocol"
 	"litekv/internal/store"
 )
@@ -198,6 +199,14 @@ func Route(parsed []string) (string, error) {
 			return protocol.SerializeError("Wrong number of arguments for 'SMEMBERS' command"), errors.New("Wrong number of arguments for 'SMEMBERS' command")
 		}
 		return protocol.SerializeArray(store.SMembers(parsed[1])), nil
+	} else if string(parsed[0]) == "SAVE" {
+		if persistence.Save() {
+			return protocol.SerializeSimpleString("OK"), nil
+		}
+		return protocol.SerializeError("Error saving data"), nil
+	} else if string(parsed[0]) == "BGSAVE" {
+		go persistence.Save()
+		return protocol.SerializeSimpleString("Background saving started"), nil
 	} else {
 		return protocol.SerializeError("Invalid operation"), errors.New("invalid Operation")
 	}
