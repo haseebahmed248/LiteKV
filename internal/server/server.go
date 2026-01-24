@@ -14,6 +14,7 @@ import (
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 	subscribed := false
 	for {
 		args, err := protocol.Parse(reader)
@@ -25,7 +26,10 @@ func handleConnection(conn net.Conn) {
 
 		if subscribed {
 			if args[0] != "SUBSCRIBE" && args[0] != "UNSUBSCRIBE" && args[0] != "PING" {
-				conn.Write([]byte(protocol.SerializeError("only SUBSCRIBE/UNSUBSCRIBE/PING allowed")))
+				writer.Write([]byte(protocol.SerializeError("only SUBSCRIBE/UNSUBSCRIBE/PING allowed")))
+				if reader.Buffered() == 0 {
+					writer.Flush()
+				}
 				continue
 			}
 		}
@@ -43,7 +47,10 @@ func handleConnection(conn net.Conn) {
 				subscribed = false
 			}
 		}
-		conn.Write([]byte(response))
+		writer.Write([]byte(response))
+		if reader.Buffered() == 0 {
+			writer.Flush()
+		}
 	}
 
 }
