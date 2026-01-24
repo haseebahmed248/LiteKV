@@ -2,15 +2,17 @@ package commands
 
 import (
 	"errors"
+	"net"
 	"strconv"
 	"time"
 
 	"litekv/internal/persistence"
 	"litekv/internal/protocol"
+	"litekv/internal/pubsub"
 	"litekv/internal/store"
 )
 
-func Route(parsed []string) (string, error) {
+func Route(parsed []string, conn net.Conn) (string, error) {
 	if string(parsed[0]) == "PING" {
 		return protocol.SerializeSimpleString("PONG"), nil
 	}
@@ -207,6 +209,25 @@ func Route(parsed []string) (string, error) {
 	} else if string(parsed[0]) == "BGSAVE" {
 		go persistence.Save()
 		return protocol.SerializeSimpleString("Background saving started"), nil
+	} else if string(parsed[0]) == "SUBSCRIBE" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'SUBSCRIBE' command"), errors.New("Wrong number of arguments for 'SUBSCRIBE' command")
+		}
+		response := pubsub.Subscribe(parsed[1], conn)
+		return protocol.SerializeArray([]string{"subscribe", parsed[1], strconv.Itoa(response)}), nil
+
+	} else if string(parsed[0]) == "UNSUBSCRIBE" {
+		if len(parsed) < 2 {
+			return protocol.SerializeError("Wrong number of arguments for 'UNSUBSCRIBE' command"), errors.New("Wrong number of arguments for 'UNSUBSCRIBE' command")
+		}
+		pubsub.Unsubscribe(parsed[1], conn)
+		return protocol.SerializeSimpleString("Unsubscribed successfully"), nil
+	} else if string(parsed[0]) == "PUBLISH" {
+		if len(parsed) < 3 {
+			return protocol.SerializeError("Wrong number of arguments for 'PUBLISH' command"), errors.New("Wrong number of arguments for 'PUBLISH' command")
+		}
+		response := pubsub.Publish(parsed[1], parsed[2])
+		return protocol.SerializeInteger(response), nil
 	} else {
 		return protocol.SerializeError("Invalid operation"), errors.New("invalid Operation")
 	}
