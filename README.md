@@ -1,6 +1,6 @@
 # LiteKV
 
-Redis-compatible in-memory database built from scratch in Go — no external database libraries. Supports RESP protocol, works with `redis-cli` and any Redis client library.
+Redis-compatible in-memory database built from scratch in Go - no external database libraries. Supports RESP protocol, works with `redis-cli` and any Redis client library.
 
 ## Architecture
 
