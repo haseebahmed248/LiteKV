@@ -1,3 +1,7 @@
+// Package persistence snapshots the in-memory store to disk as JSON and loads
+// it back on startup. A Manager owns the target path and a reference to the
+// Store it serialises, so saving/loading is a method call rather than a reach
+// into package globals.
 package persistence
 
 import (
@@ -8,6 +12,8 @@ import (
 	"time"
 )
 
+// Database is the on-disk shape of the data. Sets are stored as []string (JSON
+// has no set type) and converted to/from the store's map representation.
 type Database struct {
 	Strings map[string]string            `json:"strings"`
 	Lists   map[string][]string          `json:"lists"`
@@ -16,20 +22,31 @@ type Database struct {
 	Expiry  map[string]time.Time         `json:"expiry"`
 }
 
-func Save() bool {
+// Manager coordinates persistence for a single Store and dump file.
+type Manager struct {
+	store *store.Store
+	path  string
+}
+
+// New wires a Manager to the store it persists and the file it writes to.
+func New(s *store.Store, path string) *Manager {
+	return &Manager{store: s, path: path}
+}
+
+func (m *Manager) Save() bool {
 	var config Database
 	config.Sets = make(map[string][]string)
 	config.Hashes = map[string]map[string]string{}
 	config.Expiry = map[string]time.Time{}
 
-	strings, expiry, lists, hashes, sets := store.GetSnapshot()
-	config.Strings = strings
-	config.Expiry = expiry
-	config.Lists = lists
-	config.Hashes = hashes
+	snap := m.store.Snapshot()
+	config.Strings = snap.Strings
+	config.Expiry = snap.Expiry
+	config.Lists = snap.Lists
+	config.Hashes = snap.Hashes
 
 	// Convert sets from map[string]bool to []string
-	for k, v := range sets {
+	for k, v := range snap.Sets {
 		for item, exists := range v {
 			if exists {
 				config.Sets[k] = append(config.Sets[k], item)
@@ -38,7 +55,7 @@ func Save() bool {
 	}
 
 	file, err := os.OpenFile(
-		"data.json",
+		m.path,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0644,
 	)
@@ -57,9 +74,9 @@ func Save() bool {
 
 }
 
-func Load() {
+func (m *Manager) Load() {
 	file, err := os.OpenFile(
-		"data.json",
+		m.path,
 		os.O_RDWR|os.O_CREATE,
 		0644,
 	)
@@ -81,37 +98,22 @@ func Load() {
 		log.Printf("Error decoding json file, %v", err)
 		return
 	}
-	// TTL
-	for k, v := range data.Expiry {
-		store.Expiry[k] = v
-	}
 
-	// Strings( Redis_data )
-	for k, v := range data.Strings {
-		if duration, ok := store.Expiry[k]; ok {
-			if int(time.Until(duration).Truncate(time.Second).Seconds()) < 0 {
-				delete(store.Expiry, k)
-				continue
-			}
-		}
-		store.Redis_data[k] = v
-	}
-
-	// Lists
-	store.List_data = data.Lists
-
-	// SETS
+	// Convert sets from []string back to map[string]bool for the live store.
+	sets := make(map[string]map[string]bool)
 	for k, v := range data.Sets {
 		setMap := make(map[string]bool)
 		for _, item := range v {
 			setMap[item] = true
 		}
-		store.Set_data[k] = setMap
+		sets[k] = setMap
 	}
 
-	// HASHES
-	for k, v := range data.Hashes {
-		store.Hash_data[k] = v
-	}
-
+	m.store.Restore(store.Snapshot{
+		Strings: data.Strings,
+		Expiry:  data.Expiry,
+		Lists:   data.Lists,
+		Hashes:  data.Hashes,
+		Sets:    sets,
+	})
 }

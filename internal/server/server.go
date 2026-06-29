@@ -1,3 +1,7 @@
+// Package server owns the TCP front door. A Server accepts connections and,
+// for each one, parses RESP requests and hands them to the command Router. All
+// collaborators (store, router, pubsub, persistence) are injected at
+// construction so the server has no hidden global dependencies.
 package server
 
 import (
@@ -11,7 +15,27 @@ import (
 	"net"
 )
 
-func handleConnection(conn net.Conn) {
+// Server ties together everything needed to serve clients on a TCP address.
+type Server struct {
+	addr        string
+	store       *store.Store
+	router      *commands.Router
+	pubsub      *pubsub.Broker
+	persistence *persistence.Manager
+}
+
+// New constructs a Server listening on addr with its dependencies injected.
+func New(addr string, s *store.Store, router *commands.Router, b *pubsub.Broker, p *persistence.Manager) *Server {
+	return &Server{
+		addr:        addr,
+		store:       s,
+		router:      router,
+		pubsub:      b,
+		persistence: p,
+	}
+}
+
+func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -37,13 +61,13 @@ func handleConnection(conn net.Conn) {
 			subscribed = true
 		}
 
-		response, err := commands.Route(args, conn)
+		response, err := s.router.Route(args, conn)
 		if err != nil || response == "" {
 			log.Print(err)
 			log.Print(response)
 		}
 		if args[0] == "UNSUBSCRIBE" {
-			if !pubsub.IsSubscribed(conn) {
+			if !s.pubsub.IsSubscribed(conn) {
 				subscribed = false
 			}
 		}
@@ -55,22 +79,24 @@ func handleConnection(conn net.Conn) {
 
 }
 
-func StartServer() {
-	connection, err := net.Listen("tcp", "localhost:6379")
+// Start loads any persisted data, launches the background expiry sweeper, and
+// blocks accepting connections until the listener fails.
+func (s *Server) Start() error {
+	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		log.Print(err)
-		return
+		return err
 	}
-	log.Print("Listening to port 6379")
-	go store.CleanUp()
-	persistence.Load()
+	log.Printf("Listening to %s", s.addr)
+	go s.store.CleanUp()
+	s.persistence.Load()
 	for {
-		conn, err := connection.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			log.Print(err)
-			return
+			return err
 		}
 
-		go handleConnection(conn)
+		go s.handleConnection(conn)
 	}
 }
